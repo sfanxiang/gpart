@@ -33,6 +33,11 @@
 #include <sys/disk.h>
 #endif
 
+#if defined(__HAIKU__)
+#include <drivers/Drivers.h>
+#include <fcntl.h>
+#endif
+
 #include <unistd.h>
 
 static void geometry_from_num_sectors(struct disk_geom *g, uint64_t nsects)
@@ -95,8 +100,29 @@ static void os_disk_geometry(disk_desc *d, struct disk_geom *g)
 	g.d_nsecs = o / u;
 	g.d_c = g.d_nsecs / g.d_h / g.d_s;
 }
+#elif defined(__HAIKU__)
+static void os_disk_geometry(disk_desc *d, struct disk_geom *g)
+{
+	device_geometry geom;
+	int fd;
+
+	if ((fd = open(d->d_dev, O_RDONLY)) < 0)
+		pr(FATAL, EM_OPENFAIL, d->d_dev, strerror(errno));
+
+	if (ioctl(fd, B_GET_GEOMETRY, &geom, sizeof(geom)) < 0) {
+		close(fd);
+		pr(FATAL, EM_IOCTLFAILED, "B_GET_GEOMETRY", strerror(errno));
+	}
+
+	close(fd);
+
+	g->d_c = geom.cylinder_count;
+	g->d_h = geom.head_count;
+	g->d_s = geom.sectors_per_track;
+	g->d_nsecs = ((uint64_t)g->d_c) * g->d_h * g->d_s;
+}
 #else
-#error Only Linux and FreeBSD supported
+#error Only Linux, FreeBSD and Haiku are supported
 #endif
 
 /*

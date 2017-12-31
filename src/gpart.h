@@ -22,6 +22,7 @@
 #include "errmsgs.h"
 #include "l64seek.h"
 
+#include <endian.h>
 #include <stdint.h>
 
 typedef uint8_t byte_t;

@@ -27,6 +27,10 @@
  * offsets.
  */
 
+#ifdef __HAIKU__
+typedef off_t loff_t;
+#endif
+
 typedef loff_t off64_t;
 typedef off64_t s64_t;
 

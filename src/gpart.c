@@ -175,6 +175,10 @@ ssize_t bread(int fd, byte_t *buf, size_t ssize, size_t nsecs)
 			// ret < 0, an error case
 			if (errno == EINTR)
 				continue; // Rogue signal interruption, retry
+#ifdef __HAIKU__
+			if (errno == EINVAL)
+				return read_bytes;	// on Haiku, EOF causes EINVAL
+#endif
 			berrno = errno;
 			break;
 		}
@@ -504,20 +508,28 @@ static void u_to_chs(disk_desc *d, unsigned long u, long *c, long *h, long *s)
 
 static int on_cyl_boundary(disk_desc *d, s64_t sec)
 {
+#ifndef __HAIKU__
 	struct disk_geom *g = &d->d_dg;
 
 	if (g->d_h && g->d_s)
 		return ((sec % (g->d_h * g->d_s)) == 0);
 	return (1);
+#else
+	return (1);
+#endif
 }
 
 static int on_head_boundary(disk_desc *d, s64_t sec)
 {
+#ifndef __HAIKU__
 	struct disk_geom *g = &d->d_dg;
 
 	if (g->d_s)
 		return ((sec % g->d_s) == 0);
 	return (1);
+#else
+	return (1);
+#endif
 }
 
 static void print_partition(disk_desc *d, dos_part_entry *p, int inset, s64_t offset)
@@ -936,7 +948,11 @@ static void do_guess_loop(disk_desc *d)
 	d->d_nsb = 0;
 	bincr = incr * d->d_ssize;
 
+#ifdef __HAIKU__
+	start = skipsec ? skipsec : incr;
+#else
 	start = skipsec ? skipsec : d->d_dg.d_s;
+#endif
 	d->d_nsb = start - incr;
 	start *= d->d_ssize;
 	if (l64seek(d->d_fd, start, SEEK_SET) == -1)
